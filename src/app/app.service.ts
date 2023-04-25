@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { GenericObject } from '../interfaces/generics';
+import { GenericObject } from '../interfaces/generics.interface';
 
 @Injectable()
 export class AppService {

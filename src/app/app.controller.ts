@@ -1,6 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { AppService } from './app.service';
-import { GenericObject } from '../interfaces/generics';
+import { GenericObject } from '../interfaces/generics.interface';
 
 @Controller()
 export class AppController {
