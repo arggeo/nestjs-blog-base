@@ -7,39 +7,109 @@ import {
    Post,
    Query,
    Delete,
-   HttpException,
+   BadRequestException,
+   InternalServerErrorException,
 } from '@nestjs/common';
 import { CreatePostDto } from './dtos/create-post.dto';
-import { PaginationQueryDto } from './dtos/pagination-query.dto';
+import { PostsQueryDto } from './dtos/posts-query.dto';
+import { PostsService } from './posts.service';
+import { UpdatePostDto } from './dtos/update-post.dto';
+import { ErrorMessages } from 'src/enums/messages.enum';
+import { Serialize } from 'src/decorators/Serialize.decorator';
+import { PostLoopDto } from './dtos/loop-post.dto';
+import { PostDto } from './dtos/post.dto';
 
 @Controller('posts')
 export class PostsController {
+   constructor(private postsService: PostsService) {}
+
+   @Serialize(PostLoopDto)
    @Get()
-   getPosts(@Query() query: PaginationQueryDto): null {
-      const { page = 1, size = 10, sort = -1 } = query;
-      return null;
+   async getPosts(@Query() query: PostsQueryDto) {
+      const { page = 1, size = 10, sort = -1, sortBy = 'createdAt' } = query;
+
+      try {
+         const posts = await this.postsService.getPosts(page, size, sort, sortBy);
+         return {
+            posts,
+         };
+      } catch (err) {
+         throw new InternalServerErrorException(ErrorMessages.SOMETHING_WENT_WRONG);
+      }
    }
 
+   // Needs improvement so it validates id param as MongoID
    @Get(':id')
-   getPost(@Param() id: string): null {
-      return null;
+   async getPost(@Param('id') id: string) {
+      try {
+         const result = await this.postsService.getPost(id);
+
+         if (!result) {
+            throw new BadRequestException(ErrorMessages.POST_NOT_FOUND);
+         }
+
+         return {
+            post: result,
+         };
+      } catch (err) {
+         if (err instanceof BadRequestException) {
+            throw new BadRequestException(err.message);
+         }
+
+         throw new InternalServerErrorException(ErrorMessages.SOMETHING_WENT_WRONG);
+      }
    }
 
    @Post()
-   createPost(@Body() body: CreatePostDto): any {
-      return body;
-   }
-
-   @Patch()
-   updatePost(@Body() body: any): null {
-      if (!Object.keys(body).length) {
-         throw new HttpException('No fields provided', 400);
+   async createPost(@Body() body: CreatePostDto) {
+      try {
+         return await this.postsService.createPost(body);
+      } catch (err) {
+         throw new InternalServerErrorException(ErrorMessages.SOMETHING_WENT_WRONG);
       }
-      return null;
    }
 
-   @Delete('id')
-   deletePost(@Param() id: string): null {
-      return null;
+   @Patch(':id')
+   async updatePost(@Param('id') id: string, @Body() body: UpdatePostDto) {
+      try {
+         if (!Object.keys(body).length) {
+            throw new BadRequestException('No fields provided for update.');
+         }
+
+         const result = await this.postsService.updatePost(id, body);
+
+         if (!result.matchedCount) {
+            throw new BadRequestException(ErrorMessages.POST_NOT_FOUND);
+         }
+
+         return {
+            updatedFields: Object.keys(body).filter((key) => body[key]),
+         };
+      } catch (err) {
+         if (err instanceof BadRequestException) {
+            throw new BadRequestException(err.message);
+         }
+
+         throw new InternalServerErrorException(ErrorMessages.SOMETHING_WENT_WRONG);
+      }
+   }
+
+   @Delete(':id')
+   async deletePost(@Param('id') id: string) {
+      try {
+         const result = await this.postsService.deletePost(id);
+
+         if (!result) {
+            throw new BadRequestException(ErrorMessages.POST_NOT_FOUND);
+         }
+
+         return result;
+      } catch (err) {
+         if (err instanceof BadRequestException) {
+            throw new BadRequestException(err.message);
+         }
+
+         throw new InternalServerErrorException(ErrorMessages.SOMETHING_WENT_WRONG);
+      }
    }
 }

@@ -1,25 +1,6 @@
-import {
-   IsString,
-   MaxLength,
-   MinLength,
-   IsOptional,
-   Validate,
-} from 'class-validator';
-import { WordsLengthValidator } from 'src/validators/words-length.validator';
+import { OmitType, PartialType } from '@nestjs/mapped-types';
+import { PostDto } from './post.dto';
 
-export class CreatePostDto {
-   @IsString()
-   @MaxLength(50)
-   @MinLength(10)
-   title: string;
-
-   @IsString()
-   @IsOptional()
-   @MaxLength(150)
-   @MinLength(50)
-   excerpt: string;
-
-   @IsString()
-   @Validate(WordsLengthValidator, [300, 2500])
-   content: string;
-}
+export class CreatePostDto extends PartialType(
+   OmitType(PostDto, ['_id', 'createdAt', 'updatedAt'] as const),
+) {}
